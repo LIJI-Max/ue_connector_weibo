@@ -1,0 +1,21 @@
+{
+  "name": "Connector-Twitter",
+  "description": "A twtitter connector for unification engine",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "connect-redis": "2.0.0",
+    "express": ">= 3.4.7",
+    "express-session": "1.7.6",
+    "forky": ">= 0.0.2",
+    "http-auth": "2.1.5",
+    "redis": "0.12.1",
+    "request": "2.40.0",
+    "weibo": "0.6.11",
+    "url": "0.10.1"
+  },
+  "engines": {
+    "node": "0.10.x",
+    "npm": "2.1.x"
+  }
+}
