@@ -48,9 +48,9 @@ app.configure(function () {
     },function (username, password, callback) { // Custom authentication method.
         console.info('username', username);
         console.info('password', password);
-        callback(username === "key" && password === "18d217aa8bc3d8242c600052c9e3460f");
+        callback(username === "key" && password === "gitQuow7swip");
     });
-    //app.use(auth.connect(basic));
+    app.use(auth.connect(basic));
     app.use(express.bodyParser());
     app.use(express.methodOverride());
     app.use(app.router);
@@ -66,8 +66,8 @@ app.post(prefix + '/capabilities', function (req, res, next) {
     ConnectorObj.capabilities(null, req, res, next);
 });
 app.post(prefix + '/userinfo', function (req, res, next) {
-	console.info('capabilities');
-	ConnectorObj.userinfo(null, req, res, next);
+    console.info('capabilities');
+    ConnectorObj.userinfo(null, req, res, next);
 });
 app.get(prefix + '/connector/test', function (req, res, next) {
     console.info('get');
@@ -84,10 +84,6 @@ app.post(prefix + '/refresh', function (req, res, next) {
 app.post(prefix + '/message/send', function (req, res, next) {
     console.log('message/send');
     ConnectorObj.send(null, req, res, next) 
-});
-app.get(prefix + '/callback', function (req, res, next) {
-    console.log('callback');
-    ConnectorObj.callback(null, req, res, next) 
 });
     
 if (!module.parent) {

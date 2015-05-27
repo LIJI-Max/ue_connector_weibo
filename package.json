@@ -5,7 +5,7 @@
   "private": true,
   "dependencies": {
     "connect-redis": "2.0.0",
-    "express": ">= 3.4.7",
+    "express": " 3.4.7",
     "express-session": "1.7.6",
     "forky": ">= 0.0.2",
     "http-auth": "2.1.5",

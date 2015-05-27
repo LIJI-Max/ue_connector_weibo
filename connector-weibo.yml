@@ -4,4 +4,4 @@ load: false
 type: connector
 #auth: basic
 credentials: key:gitQuow7swip
-uri: http://connector-weibo.herokuapp.com:80
+#uri: http://connector-weibo.herokuapp.com:80

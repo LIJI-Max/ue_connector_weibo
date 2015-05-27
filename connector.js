@@ -5,22 +5,10 @@ var weibo = require('weibo'),
     //twitter_update_with_media = require('./twitter_update_with_media'),
     call_back_url='http://127.0.0.1:5000/v1/callback',
     request = require('request').defaults({ encoding: null });
-weibo.init('OutboxPro',WEIBO_OAUTH_KEY,WEIBO_OAUTH_SECRET, call_back_url);
+weibo.init('weibo',WEIBO_OAUTH_KEY,WEIBO_OAUTH_SECRET, call_back_url);
+
 
 function Connector(app, client) {
-    var sendMessageWithoutImage = function(err, req, res, next, twit, wallpost,access){
-        console.log('inside outer sent function');
-        weibo.post('statuses/update', wallpost, function(err, data, response) {
-            if (err) {
-                console.log('found error', err);
-                return next(err);
-            }
-            res.json({
-                status: 200,
-                info: "OK"
-            });
-        });
-    };
     this.callback = function(err, req, res, next){
         console.log('Response is here ' + res);
     };
@@ -34,20 +22,15 @@ function Connector(app, client) {
         }
         var reqObj = url.parse(req.param('uri'));
         console.log('uri printing**', reqObj);
-        //twitter://2373196350-BqRyghcN7S1eaA6rUiMm6lEYXZmSA2TpuSNDBOF:o40aqVRWkApZ2kJ1oPqdKzho9yLoQfFGvlgN6RUZUJETV@twitter.uib
+         //weibo://2378169164:2.00K8YwaCaCUJEB538ae0aae3L48cmD@weibo.uib
         access = reqObj.auth.split(':');
         if (access && access.length !== 2) {
             return next({code:503, message:'Access credentials invalid!'});
         }
-        var twit = new Twit({
-            consumer_key:         TWITTER_OAUTH_KEY
-          , consumer_secret:      TWITTER_OAUTH_SECRET
-          , access_token:         access[0]
-          , access_token_secret:  access[1]
-        })
         
-        twit.get( "account/verify_credentials", function(err2, res2) {
-            console.info('twit');
+        var user = { blogtype: 'weibo', id:access[0], access_token:access[1] };
+        weibo.verify_credentials( user, function(err2, res2) {
+            console.info('weibo');
             if (err2) {
                 console.info('err2');
                 return next(err2);
@@ -58,7 +41,6 @@ function Connector(app, client) {
               info: "OK",
               uri: req.param('uri')
             });
-
         });
     };
     this.getErrorCode = function(data) {
@@ -88,23 +70,15 @@ function Connector(app, client) {
         if (err) {
             return next(err);
         }
-        res.json({
-            capabilities : [ 'SEND' ],
-            status: 200,
-            info: "OK"
-        });
 		res.json({
 			"status": 200,
 			"info": "OK",
 			"connector": [{
-				"name": "Twitter",
-				"icons": {
-					"SVG": "https://s3-eu-west-1.amazonaws.com/uib-icons/rss/twitter.svg"
-				},
+				"name": "Weibo",
 				"backends": [{
-						"name": "Twitter",
+						"name": "Weibo",
 						"type": "OAUTH", 
-						"address": "https://api.twitter.com/oauth/authorize"
+						"address": "https://api.weibo.com/oauth2/authorize"
 					}
 				],
 				"capabilities": [
@@ -120,13 +94,8 @@ function Connector(app, client) {
             next(err);
         }
 		var reqObj = url.parse(req.param('uri')),
-            access = reqObj.auth.split(':'),
-			twit = new Twit({
-                consumer_key:         TWITTER_OAUTH_KEY
-              , consumer_secret:      TWITTER_OAUTH_SECRET
-              , access_token:         access[0]
-              , access_token_secret:  access[1]
-            })
+            access = reqObj.auth.split(':')
+			
         //var client = app.get('redisConnect');
         client.hgetall(access[0], function (err, obj) { // Implement cache list connectors
             if (obj) {
@@ -141,8 +110,9 @@ function Connector(app, client) {
                     }]
                 });
             } else {
-                console.log('No cached data call twitter *********');
-                twit.get( "/account/verify_credentials", function(err, resp) {
+                console.log('No cached data call weibo *********');
+                var user = { blogtype: 'weibo', id:access[0], access_token:access[1] };
+                weibo.verify_credentials(user, function(err, resp) {
                     if (err) {
                         next(err);
                     }
@@ -153,12 +123,12 @@ function Connector(app, client) {
                         info: "OK",
                         connectors: [{
                             displayName: resp.name,
-                            userImage: resp.profile_image_url_https || resp.profile_image_url,
+                            userImage: resp.profile_image_url,
                             loginName: resp.screen_name
                         }]
                     });
                     // Implement Cache to reduce twitter call - store values in redis
-                    client.hmset(access[0], "displayName", resp.name, "userImage", resp.profile_image_url_https || resp.profile_image_url, "loginName", resp.screen_name);
+                    client.hmset(access[0], "displayName", resp.name, "userImage", resp.profile_image_url, "loginName", resp.screen_name);
                     client.expire(access[0], 3600); // Expired in 1 Hour
 
                 });
@@ -167,8 +137,6 @@ function Connector(app, client) {
 
         });
 
-
-        
     };
         
     this.send = function (err, req, res, next) {
@@ -179,36 +147,26 @@ function Connector(app, client) {
         var reqObj = url.parse(req.param('uri')),
             wallpost = {},
             media_picture = {},
-            access = reqObj.auth.split(':'),
+            access = reqObj.auth.split(':');
             // Repository used for without media upload
-            twit = new Twit({
-                consumer_key:         TWITTER_OAUTH_KEY
-              , consumer_secret:      TWITTER_OAUTH_SECRET
-              , access_token:         access[0]
-              , access_token_secret:  access[1]
-            });
-        // patch to upload media with status
-        var tuwm = new twitter_update_with_media({
-            consumer_key: TWITTER_OAUTH_KEY,
-            consumer_secret: TWITTER_OAUTH_SECRET,
-            token: access[0],
-            token_secret: access[1]
-        });
+            // patch to upload media with status
+        var user = { blogtype: 'weibo', id:access[0], access_token:access[1] };
+  
 
         if (req.param('message')) {
-            var mesaage = req.param('message'),
-                content = mesaage.subject,
+            var message = req.param('message'),
+                content = message.subject,
                 link = [],
                 picture;
-            if (mesaage.parts && mesaage.parts.length) {
-                mesaage.parts.forEach(function (part) {
+            if (message.parts && message.parts.length) {
+                message.parts.forEach(function (part) {
                     
                     if (part.type === 'body') {
                         var parseMsg = JSON.parse(part.data);
                         var message_data =  parseMsg.content;
                         var picture = parseMsg.image_url;
                         if (parseMsg.twitter_image === true || parseMsg.twitter_image == "true") {
-                            console.log('twitter image preview true');
+                            console.log('weibo image preview true');
                             media_picture.picture = picture;
                         } else {
                             console.log('twitter image preview false');
@@ -230,48 +188,48 @@ function Connector(app, client) {
             console.log('before decide media', media_picture.picture);
             if (media_picture.picture) {
                 console.log('with media upload');
-                request.head(media_picture.picture,
-                    function (error, response, body) {
-                    if (!error) { // && response.statusCode == 200 commented bcz amazone images not able to post http://www.amazon.com/gp/goldbox/ref=nav_cs_gb
-                        var image_size = response.headers['content-length'];
-                        if (image_size > 2000000) { // 2mb max upload limit
-                            console.log('greater than 2mb');
-                            sendMessageWithoutImage(err, req, res, next, twit, wallpost, access);
+                weibo.upload(user, content,media_picture.picture,
+                    function (err, status) {
+                    if (err) { // && response.statusCode == 200 commented bcz amazone images not able to post http://www.amazon.com/gp/goldbox/ref=nav_cs_gb
+                    
+                        console.log('have errors', err);
+                        res.json({
+                            status: 500,
+                            info: err.data.error_code + ' ' + err.message
 
-                        } else {
-                            console.log('less than 2mb');
-                            tuwm.post(content, media_picture.picture, function(err, response) { // deprecated later need to upgrade to status/update api
-                                if (err) {
-                                    console.log('error', err);
-                                    return next(err);
-                                }
-                                error_parse = JSON.parse(response.body);
-                                if (error_parse.errors) {
-                                    console.log('have errors', error_parse);
-                                    res.json({
-                                        status: 500,
-                                        info: error_parse.errors[0].code + ' ' + error_parse.errors[0].message
-
-                                    });
-                                } else {
-                                    res.json({
+                        });
+                        
+                    } else {
+                        console.log('Succesfully upload a image to Weibo');
+                        res.json({
                                         status: 200,
                                         info: "OK",
-                                        id: response.id
-                                    });
-                                }
-                            });
-
-                        }
-                    } else {
-                        console.log('cannot access image url posting without image');
-                        sendMessageWithoutImage(err, req, res, next, twit, wallpost, access)
+                                        id: status.id
+                                    });                    
                     }
                 });
 
             } else {
                 console.log('no media without media upload');
-                sendMessageWithoutImage(err, req, res, next, twit, wallpost, access)
+                weibo.update(user,content, function(err, status){
+                    if (err) { // && response.statusCode == 200 commented bcz amazone images not able to post http://www.amazon.com/gp/goldbox/ref=nav_cs_gb
+                    
+                        console.log('have errors', err);
+                        res.json({
+                            status: 500,
+                            info: err.data.error_code + ' ' + err.message
+
+                        });
+                        
+                    } else {
+                        console.log('Succesfully upload a image to Weibo');
+                        res.json({
+                                        status: 200,
+                                        info: "OK",
+                                        id: status.id
+                                    });                    
+                    }
+                } );
             }
         }
     };
